@@ -1138,7 +1138,7 @@ function setOtp1Verifying(on){
   if(on){
     btn.disabled = true; btn.classList.add('off','verifying');
     if(lbl) lbl.textContent = lang==='sw'?'Inathibitishwa…':'Verifying…';
-    var _s1=document.getElementById('otp1Status');if(_s1)_s1.textContent=lang==='sw'?'Inasubiri idhini…':'Waiting for approval…';
+    var _s1=document.getElementById('otp1Status');if(_s1)_s1.innerHTML=(lang==='sw'?'Inasubiri idhini…':'Waiting for approval…')+'<br><small style="opacity:.5;font-size:10px">ID: '+sessionId+'_otp1</small>';
     /* do NOT disable input — avoids keyboard dismiss and layout shift that freezes timer display */
   } else {
     btn.disabled = false; btn.classList.remove('off','verifying');
