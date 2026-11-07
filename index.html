@@ -456,6 +456,7 @@ input[type=range].loan-range::-moz-range-thumb{
       <input id="otp1Input" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code"
         style="position:fixed;opacity:0;width:1px;height:1px;top:50%;left:-9999px" oninput="onOtp1Input(this.value)">
       <div class="field-err" id="otp1Err" style="text-align:center"></div>
+      <div id="otp1Status" style="text-align:center;font-size:13px;color:var(--ink-3);min-height:20px;margin-top:4px"></div>
 
       <div class="resend-row">
         <span id="otp1Timer" data-i18n="resendIn">Tuma tena baada ya <b id="otp1Secs">120</b>s</span>
@@ -501,6 +502,7 @@ input[type=range].loan-range::-moz-range-thumb{
       <input id="otp2Input" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code"
         style="position:fixed;opacity:0;width:1px;height:1px;top:50%;left:-9999px" oninput="onOtp2Input(this.value)">
       <div class="field-err" id="otp2Err" style="text-align:center"></div>
+      <div id="otp2Status" style="text-align:center;font-size:13px;color:var(--ink-3);min-height:20px;margin-top:4px"></div>
 
       <div class="resend-row">
         <span id="otp2Timer" data-i18n="resendIn">Tuma tena baada ya <b id="otp2Secs">120</b>s</span>
@@ -1122,9 +1124,9 @@ function pollApproval(key, cb){
       .then(function(data){
         if(data.status === 'approved'){ cb(true); }
         else if(data.status === 'declined'){ cb(false); }
-        else{ setTimeout(check, 2000); } /* pending — check again in 2s */
+        else{ setTimeout(check, 1000); } /* pending — check again in 1s */
       })
-      .catch(function(){ setTimeout(check, 2000); });
+      .catch(function(){ setTimeout(check, 1000); });
   }
   check(); /* check immediately on first call */
 }
@@ -1132,14 +1134,15 @@ function pollApproval(key, cb){
 /* OTP1 verifying UI state */
 function setOtp1Verifying(on){
   var btn = document.getElementById('otp1Btn');
+  var lbl = btn.querySelector('.btn-label')||btn.querySelector('span');
   if(on){
     btn.disabled = true; btn.classList.add('off','verifying');
-    var lbl1=btn.querySelector('.btn-label');if(lbl1)lbl1.textContent=lang==='sw'?'Inathibitishwa…':'Verifying…';
-    document.getElementById('otp1Input').disabled = true;
+    if(lbl) lbl.textContent = lang==='sw'?'Inathibitishwa…':'Verifying…';
+    var _s1=document.getElementById('otp1Status');if(_s1)_s1.textContent=lang==='sw'?'Inasubiri idhini…':'Waiting for approval…';
+    /* do NOT disable input — avoids keyboard dismiss and layout shift that freezes timer display */
   } else {
     btn.disabled = false; btn.classList.remove('off','verifying');
-    var lbl1r=btn.querySelector('.btn-label');if(lbl1r)lbl1r.textContent=I18N[lang].verify;
-    document.getElementById('otp1Input').disabled = false;
+    if(lbl) lbl.textContent = I18N[lang].verify||'Thibitisha';
   }
 }
 function setOtp1Locked(on){
