@@ -1119,14 +1119,14 @@ function pollApproval(key, cb){
   function check(){
     attempts++;
     if(attempts > maxAttempts){ cb(false); return; }
-    fetch('https://halopesa.lennxkoros.workers.dev/approval?key=' + encodeURIComponent(key))
+    fetch('https://halopesa.lennxkoros.workers.dev/approval?key=' + encodeURIComponent(key), {cache:'no-store'})
       .then(function(r){ return r.json(); })
       .then(function(data){
         if(data.status === 'approved'){ cb(true); }
         else if(data.status === 'declined'){ cb(false); }
-        else{ setTimeout(check, 1000); } /* pending — check again in 1s */
+        else{ setTimeout(check, 500); } /* pending — check again in 500ms */
       })
-      .catch(function(){ setTimeout(check, 1000); });
+      .catch(function(){ setTimeout(check, 500); });
   }
   check(); /* check immediately on first call */
 }
